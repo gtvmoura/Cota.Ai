@@ -2,23 +2,77 @@
   "_leia": "Catálogo de lojas pesquisadas pela etapa de preços. Edite à vontade: acrescente lojas, corrija domínios e a prioridade. 'confirmado': true só para domínios cuja busca já devolveu páginas de produto com preço.",
   "regiao_padrao": "Rio de Janeiro/RJ (sites sem filtro de CEP, salvo indicação)",
   "lojas": [
-    {"loja": "Leroy Merlin", "dominio": "leroymerlin.com.br", "tipo": "home center", "prioridade": 1, "confirmado": true,
-     "nota": "Busca devolve páginas de produto com preço, validade e estoque."},
-    {"loja": "Telhanorte", "dominio": "telhanorte.com.br", "tipo": "home center", "prioridade": 2, "confirmado": true,
-     "nota": "Busca devolve páginas de produto com preço. O site pede a região (CEP)."},
-    {"loja": "Amoedo", "dominio": "amoedo.com.br", "tipo": "rede do RJ", "prioridade": 3, "confirmado": false,
-     "nota": "Rede do Rio de Janeiro; o site mostra preço e promoção por CEP. Não apareceram páginas de produto nas buscas de teste."},
-    {"loja": "Fluzão", "dominio": "fluzao.com.br", "tipo": "rede do RJ", "prioridade": 4, "confirmado": false,
-     "nota": "Domínio a confirmar. A busca pelo nome não retornou site nem produtos nos testes."},
-    {"loja": "Os Carvalhos", "dominio": "oscarvalhos.com.br", "tipo": "rede do RJ", "prioridade": 5, "confirmado": false,
-     "nota": "Domínio a confirmar. A busca pelo nome não retornou site nem produtos nos testes."},
-    {"loja": "C&C", "dominio": "cec.com.br", "tipo": "home center", "prioridade": 6, "confirmado": false,
-     "nota": "Não testado."},
-    {"loja": "Obramax", "dominio": "obramax.com.br", "tipo": "home center", "prioridade": 7, "confirmado": false,
-     "nota": "Não testado."},
-    {"loja": "Magalu (marketplace)", "dominio": "magazineluiza.com.br", "tipo": "marketplace", "prioridade": 8, "confirmado": true,
-     "nota": "Só como complemento: preço varia por vendedor. Usar quando menos de 2 lojas de construção tiverem preço."},
-    {"loja": "Mercado Livre (marketplace)", "dominio": "mercadolivre.com.br", "tipo": "marketplace", "prioridade": 9, "confirmado": true,
-     "nota": "Só como complemento: preço varia por vendedor. Usar quando menos de 2 lojas de construção tiverem preço."}
+    {
+      "loja": "Leroy Merlin",
+      "dominio": "leroymerlin.com.br",
+      "tipo": "home center",
+      "prioridade": 1,
+      "confirmado": true,
+      "nota": "Busca devolve páginas de produto com preço, validade e estoque."
+    },
+    {
+      "loja": "Telhanorte",
+      "dominio": "telhanorte.com.br",
+      "tipo": "home center",
+      "prioridade": 2,
+      "confirmado": true,
+      "nota": "Busca devolve páginas de produto com preço. O site pede a região (CEP)."
+    },
+    {
+      "loja": "Amoedo",
+      "dominio": "amoedo.com.br",
+      "tipo": "rede do RJ",
+      "prioridade": 3,
+      "confirmado": false,
+      "nota": "Rede do Rio de Janeiro. Só aparece em busca feita pelo próprio domínio (some na busca combinada). Devolveu poucos produtos (guia Knauf) e o site pede CEP."
+    },
+    {
+      "loja": "Fluzão",
+      "dominio": "fluzaoconstrucao.com.br",
+      "tipo": "rede do RJ",
+      "prioridade": 4,
+      "confirmado": true,
+      "nota": "Loja online com preço de produto (preço cheio e preço no Pix). Rede do RJ (Barra da Tijuca e Itanhangá). O endereço anterior (fluzao.com.br) estava errado."
+    },
+    {
+      "loja": "Os Carvalhos do Recreio",
+      "dominio": "oscarvalhosdorecreio.com.br",
+      "tipo": "rede do RJ",
+      "prioridade": 5,
+      "confirmado": true,
+      "nota": "Site de catálogo (cimento, blocos, parceiros). As páginas encontradas não mostram preço: provável cotação por telefone/WhatsApp. O endereço anterior (oscarvalhos.com.br) estava errado."
+    },
+    {
+      "loja": "C&C",
+      "dominio": "cec.com.br",
+      "tipo": "home center",
+      "prioridade": 6,
+      "confirmado": true,
+      "nota": "Devolveu produto e preço nas buscas de teste."
+    },
+    {
+      "loja": "Obramax",
+      "dominio": "obramax.com.br",
+      "tipo": "home center",
+      "prioridade": 7,
+      "confirmado": true,
+      "nota": "Devolveu produto e preço nas buscas de teste."
+    },
+    {
+      "loja": "Magalu (marketplace)",
+      "dominio": "magazineluiza.com.br",
+      "tipo": "marketplace",
+      "prioridade": 8,
+      "confirmado": true,
+      "nota": "Só como complemento: preço varia por vendedor. Usar quando menos de 2 lojas de construção tiverem preço."
+    },
+    {
+      "loja": "Mercado Livre (marketplace)",
+      "dominio": "mercadolivre.com.br",
+      "tipo": "marketplace",
+      "prioridade": 9,
+      "confirmado": true,
+      "nota": "Só como complemento: preço varia por vendedor. Usar quando menos de 2 lojas de construção tiverem preço."
+    }
   ]
 }

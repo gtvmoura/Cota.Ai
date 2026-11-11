@@ -75,6 +75,7 @@ digite o comando (sem acento: `/cotacao`):
 | Comando | O que faz |
 |---|---|
 | `/cotacao [projeto]` | Roda os agentes (extrator, validador, revisor final e **pesquisador de preços**) sobre o projeto e entrega a planilha Excel com Materiais (com preços de mercado), Serviços, detalhe dos preços, lojas consultadas e as pendências a confirmar antes de cotar. Não precisa de chave da API: usa o seu plano do Claude. |
+| `/proposta [pasta da obra]` | Etapa **separada** da cotação. Com a planilha validada e os valores preenchidos pela equipe, monta a **proposta comercial** no modelo da empresa (DOCX e PDF): ofício, memorial descritivo por disciplina, observações e exclusões, valor total por extenso, prazo, pagamento, responsabilidades e assinatura. |
 | `/projeto3d [projeto]` | Monta a visualização 3D da obra com as fases Antes, Obra (o que demolir e o que construir) e Depois (com mobiliário), paredes translúcidas conforme o ângulo, botões de orientação e bússola. Publica como página privada. |
 
 Exemplo: anexe o PDF do projeto na conversa e digite `/cotacao`, depois `/projeto3d`.
@@ -141,6 +142,25 @@ Configure uma vez em *Settings → Secrets and variables → Actions → New rep
 secret*, com o nome `ANTHROPIC_API_KEY`. Os arquivos podem ser enviados pelo próprio
 site do GitHub (*Add file → Upload files*).
 
+## Proposta comercial
+
+```
+ /cotacao ─▶ planilha ─▶ a equipe valida e informa os valores ─▶ /proposta ─▶ DOCX + PDF
+```
+
+1. Na planilha da cotação, a equipe confere as quantidades e informa os valores: **Preço adotado** de cada
+   material (já vem preenchido com o preço médio das lojas; digite por cima para trocar) e **Valor unitário**
+   de cada serviço. A aba **Resumo financeiro** mostra os totais por área e o que ainda está sem valor.
+2. `/proposta <pasta da obra>` cria `proposta/proposta.json` (cliente, número, prazo, pagamento, modo do
+   valor, BDI) e o agente `redator-de-proposta` escreve o memorial no estilo da empresa.
+3. `python -m cotaai proposta <pasta> --pdf` gera o documento. Enquanto o `status` for `rascunho`, o
+   cabeçalho mostra "RASCUNHO: valores ainda não validados". A versão `final` exige `validado_por` e não sai
+   com valor faltando ou pagamento que não fecha 100%.
+
+O valor vem **só** da planilha validada (ou de um `valor_final_manual` que o responsável decidir). O modelo
+da empresa (nome, logo, contatos, rodapé, cláusulas-padrão e forma de pagamento) fica em `empresa/empresa.json`,
+pasta ignorada pelo git; o arquivo `.claude/skills/proposta/assets/empresa.exemplo.json` mostra o formato.
+
 ## Pesquisa de preços: lojas e limites
 
 As lojas pesquisadas ficam em `.claude/skills/cotacao/lojas.json` (Leroy Merlin, Telhanorte,
@@ -153,8 +173,11 @@ O agente só registra preço que apareceu no texto da busca ou da página, com o
 - **Abrir páginas de produto** depende de a rede do ambiente permitir os sites das lojas. Sem isso,
   o preço vem do resultado de busca, que pode estar desatualizado (a planilha marca "Resultado de
   busca" e a data de validade, quando o site informa).
-- **Lojas sem catálogo online** (comum em redes locais) não têm preço a pesquisar: aparecem como
-  "cotar por telefone ou WhatsApp".
+- **Teto de buscas:** a ferramenta de busca aceita cerca de 200 consultas por sessão, somadas entre todos os
+  agentes. Um projeto de 150 materiais em 4 ou 5 lojas pede centenas. Quando o teto acaba, o item fica como
+  "não pesquisado" (nunca como pesquisado) e pode ser refeito numa rodada complementar, com o limite ampliado.
+- **Lojas com catálogo sem preço** (como Os Carvalhos do Recreio) ou sem site aparecem como "cotar por
+  telefone ou WhatsApp".
 - **Preço depende de região e estoque.** Sites mostram o preço de referência de uma praça; confirme
   com a loja antes de fechar.
 

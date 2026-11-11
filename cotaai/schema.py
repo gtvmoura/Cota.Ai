@@ -139,6 +139,7 @@ LEVANTAMENTO_SCHEMA = {
 ACESSO_LOJA = [
     "pagina_aberta",        # a página do produto foi aberta e o preço lido nela
     "somente_busca",        # preço lido no resultado de busca (pode estar desatualizado)
+    "catalogo_sem_preco",   # site com catálogo, mas sem preços públicos: cotar por WhatsApp/telefone
     "sem_acesso",           # site existe, mas não foi possível consultar
     "sem_presenca_online",  # não foi encontrado catálogo online: cotar por telefone/WhatsApp
 ]

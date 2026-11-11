@@ -96,14 +96,18 @@ def test_pipeline_completo(tmp_path, monkeypatch):
     assert "3000 → 3010" in chamadas[2][2] and '"extraido"' in chamadas[2][2]
 
     wb = load_workbook(xlsx)
-    assert wb.sheetnames == ["Materiais", "Serviços", "Notas da IA"]
+    assert wb.sheetnames == ["Materiais", "Serviços", "Resumo financeiro", "Notas da IA"]
     m = wb["Materiais"]
     assert m["C2"].value == "Bloco cerâmico" and m["G2"].value == 3010
     assert m["I2"].value == "=ROUNDUP(G2*(1+H2),2)"
-    assert m["E3"].value == "Não (sugerido)" and m["M3"].value == "Adicionado na revisão final"
+    assert m["E3"].value == "Não (sugerido)" and m["O3"].value == "Adicionado na revisão final"
     s = wb["Serviços"]
     assert s["B2"].value == "Execução de alvenaria de vedação" and s["C2"].value == "Alvenaria"
     assert s["H2"].value == 180 and s["I2"].value is None  # valor fica em branco para cotar
+    assert s["J2"].value == '=IF(I2="","",H2*I2)'           # valor total
+    assert m["J1"].value == "Preço adotado (R$/un)" and m["K2"].value == '=IF(J2="","",I2*J2)'
+    r = wb["Resumo financeiro"]
+    assert r["B5"].value == "=B3+B4" and "SUM(Materiais!$K$2:$K$3)" in r["B3"].value
     notas = "\n".join(str(c.value) for row in wb["Notas da IA"].iter_rows() for c in row if c.value)
     assert "Confirmar tipo de telha" in notas and "duplicidade" in notas
 

@@ -85,6 +85,15 @@ Se as lojas estiverem bloqueadas pela rede do ambiente, diga ao usuário que a l
 páginas exige liberar os domínios das lojas nas configurações de rede do ambiente (veja a
 documentação do ambiente), e siga no modo `somente_busca`. Nunca contorne o bloqueio.
 
+**4a-bis. Orçamento de buscas (faça a conta antes de lançar).** A ferramenta de busca tem um teto de
+cerca de **200 consultas por sessão, compartilhado entre todos os agentes** (variável
+`CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION`). Cada agente gasta cerca de uma busca por material e por loja,
+então 150 materiais em 4 lojas pedem uns 600 buscas. Diga ao usuário o cálculo e as opções: (a) elevar o
+limite no ambiente, (b) priorizar as lojas e os materiais de maior valor, (c) aceitar cobertura parcial.
+Os agentes que baterem no teto devem marcar o item "não pesquisado: limite de chamadas", nunca como
+pesquisado. Ordene o trabalho por valor: primeiro as lojas fortes de construção (Leroy Merlin,
+Telhanorte, Fluzão), depois as demais.
+
 **4b. Dividir em lotes.**
 
 ```bash
@@ -116,6 +125,22 @@ python -m cotaai precos-mesclar {SAIDA}/precos/precos_lote_*.json --saida {SAIDA
 O comando recusa lotes fora do esquema, ids repetidos, cotação sem link ou com preço inválido e
 material sem registro de pesquisa. Corrija (reenvie o lote ao agente) e rode de novo.
 
+**Rodada complementar (uma loja a mais, itens que faltaram).** `precos-mesclar` aceita o mesmo material em
+mais de um arquivo: soma as cotações, une as lojas pesquisadas e recalcula o status. Para pesquisar só
+algumas lojas, ou refazer itens que ficaram "não pesquisado", crie lotes `comp_NN_materiais.json` com o
+campo `buscar_em` em cada material (lista de lojas a pesquisar naquele item) e rode os agentes com o pedido
+"pesquisa complementar": só essas lojas, `allowed_domains` com o domínio de cada loja. Junte tudo de novo:
+
+```bash
+python -m cotaai precos-mesclar {SAIDA}/precos/precos_lote_*.json {SAIDA}/precos/precos_comp_*.json --saida {SAIDA}/precos.json --final {SAIDA}/etapa3_final.json
+```
+
+**Domínios das lojas.** Um domínio errado no `lojas.json` faz a loja parecer "sem site". Se uma loja não
+retornar nada pelo domínio, procure o site oficial pelo nome ("<loja> site oficial") e corrija o catálogo
+antes de concluir que ela não existe. Conhecidos: Fluzão = `fluzaoconstrucao.com.br` (tem preço de
+produto); Os Carvalhos do Recreio = `oscarvalhosdorecreio.com.br` (catálogo sem preço público);
+Amoedo = `amoedo.com.br` (só aparece em busca restrita a esse domínio).
+
 **Regras de qualidade do passo 4** (confira ao ler os lotes):
 
 - Toda cotação tem preço **visto** no texto da busca ou da página, com o link. Cotação sem origem é
@@ -123,7 +148,11 @@ material sem registro de pesquisa. Corrija (reenvie o lote ao agente) e rode de 
 - Preço por unidade do orçamento, com a conversão escrita (caixa = 2,20 m²).
 - Cotação `aproximada` ou `sem estoque` aparece no detalhe, mas **não entra** nas estatísticas.
 - Lojas sem resultado aparecem na aba "Lojas consultadas" com o motivo: o usuário precisa saber o
-  que não foi pesquisado de fato.
+  que não foi pesquisado de fato. Loja com site mas sem preço público = `catalogo_sem_preco` (cotar por
+  telefone ou WhatsApp). Itens "não pesquisado" (limite de buscas) não contam como pesquisados.
+- Fluzão e outras lojas mostram "preço cheio" e "preço no Pix": registre o cheio e ponha o Pix na observação.
+- A aba de detalhe marca cotações muito distantes das demais do mesmo item ("Preço muito diferente das
+  demais lojas: confira"): leia essas linhas e ajuste a coluna "Considerar" se preciso.
 
 ## Passo 5: planilha final
 
@@ -135,10 +164,11 @@ Usa `precos.json` automaticamente se existir ao lado. Gera `{SAIDA}/<NOME> - lev
 
 | Aba | Conteúdo |
 |---|---|
-| **Materiais** | quantidades e, para cada item, preço mínimo, médio e máximo, loja do menor preço, lojas pesquisadas, totais estimados e situação do preço |
-| **Serviços** | nome, área de atuação, local, quantidade; valor em branco para cotar |
+| **Materiais** | quantidades e, para cada item, preço mínimo, médio e máximo, loja do menor preço, lojas pesquisadas, totais estimados, situação do preço e **Preço adotado** (padrão: preço médio; a equipe digita o valor que vale) |
+| **Serviços** | nome, área de atuação, local, quantidade; **valor unitário em branco** para a equipe preencher, e valor total |
 | **Preços (detalhe)** | uma linha por cotação: loja, produto, preço, conversão, equivalência, estoque, data e **link**. A coluna "Considerar" (Sim/Não) controla o que entra nos cálculos |
 | **Lojas consultadas** | quais lojas foram pesquisadas, como (página aberta ou só busca), cobertura e totais |
+| **Resumo financeiro** | total de materiais e de serviços, totais por área de atuação e por etapa, itens ainda sem valor |
 | **Notas da IA** | pendências, premissas, itens removidos e materiais sem preço |
 
 Entregue o arquivo ao usuário (SendUserFile) e responda com:
@@ -152,4 +182,8 @@ Entregue o arquivo ao usuário (SendUserFile) e responda com:
 
 ## Sugestão ao usuário
 
-Ao final, ofereça `/projeto3d` para gerar a visualização 3D da mesma obra (antes, obra e depois).
+Ao final, ofereça:
+
+- `/proposta` para montar a proposta comercial ao cliente, depois que a equipe validar a planilha e
+  preencher os valores (preço adotado dos materiais e valor unitário dos serviços).
+- `/projeto3d` para gerar a visualização 3D da mesma obra (antes, obra e depois).

@@ -102,6 +102,7 @@ def _aba_materiais(wb, final, precos_idx):
         ("Especificado no projeto?", 13), ("Unid.", 7), ("Qtd. líquida", 11),
         ("Perda %", 8), ("Qtd. p/ compra", 12),
     ]
+    adotado = [("Preço adotado (R$/un)", 14), ("Total adotado (R$)", 16)]
     resto = [
         ("Memória de cálculo", 40), ("Referência no projeto", 22), ("Observações", 32),
         ("Validação", 18), ("Nota da validação", 40), ("_status", 4),
@@ -112,7 +113,9 @@ def _aba_materiais(wb, final, precos_idx):
         ("Total estimado, menor preço (R$)", 16), ("Total estimado, preço médio (R$)", 16),
         ("Situação do preço", 16),
     ]
-    colunas = base + (preco_cols if com_preco else []) + resto
+    colunas = base + (preco_cols if com_preco else []) + adotado + resto
+    c_ad = 19 if com_preco else 10          # coluna "Preço adotado" (S ou J)
+    l_ad, l_tot = get_column_letter(c_ad), get_column_letter(c_ad + 1)
 
     linhas = []
     for i, m in enumerate(materiais, start=2):
@@ -136,29 +139,34 @@ def _aba_materiais(wb, final, precos_idx):
                 f'=IF(J{i}="","",I{i}*J{i})',
                 f'=IF(K{i}="","",I{i}*K{i})',
                 P.ROTULO_STATUS[item["status"]] if item else "Não pesquisado",
+                f'=IF(K{i}="","",ROUND(K{i},2))',   # padrão: preço médio; digite um valor para trocar
             ]
+        else:
+            linha += [None]                          # preço adotado: a preencher
+        linha += [f'=IF({l_ad}{i}="","",I{i}*{l_ad}{i})']
         linha += [
             m["memoria_calculo"], m["referencia_projeto"], m["observacoes"],
             STATUS_LEGIVEL.get(m["status"], m["status"]), m["nota_validacao"], m["status"],
         ]
         linhas.append(linha)
 
-    destaque = tuple(range(10, 19)) if com_preco else ()
+    destaque = (tuple(range(10, 19)) if com_preco else ()) + (c_ad, c_ad + 1)
     _aba(ws, colunas, linhas, "Materiais", destaque=destaque)
     fmt = {7: "#,##0.00", 8: "0%", 9: "#,##0.00"}
     if com_preco:
         moeda = '"R$" #,##0.00'
         fmt.update({10: moeda, 11: moeda, 12: moeda, 16: moeda, 17: moeda})
+    fmt.update({c_ad: '"R$" #,##0.00', c_ad + 1: '"R$" #,##0.00'})
     _formatar(ws, fmt)
-    return n
+    return n, l_tot
 
 
-def _aba_servicos(wb, final):
+def _aba_servicos(wb, final):  # devolve o número de serviços
     ws = wb.create_sheet("Serviços")
     colunas = [
         ("Item", 7), ("Serviço", 34), ("Área de atuação", 20), ("Local de aplicação", 24),
         ("Escopo", 40), ("Especificado no projeto?", 13), ("Unid.", 7), ("Quantidade", 11),
-        ("Valor unitário (cotar)", 13), ("Memória de cálculo", 40),
+        ("Valor unitário (cotar)", 13), ("Valor total (R$)", 14), ("Memória de cálculo", 40),
         ("Referência no projeto", 22), ("Observações", 32), ("Validação", 18),
         ("Nota da validação", 40), ("_status", 4),
     ]
@@ -167,12 +175,14 @@ def _aba_servicos(wb, final):
         linhas.append([
             s["id"], s["servico"], s["area_atuacao"], s["local_aplicacao"],
             s["descricao_escopo"], _sim_nao(s["especificado_no_projeto"]), s["unidade"],
-            s["quantidade"], None, s["memoria_calculo"], s["referencia_projeto"],
+            s["quantidade"], None, f'=IF(I{len(linhas) + 2}="","",H{len(linhas) + 2}*I{len(linhas) + 2})',
+            s["memoria_calculo"], s["referencia_projeto"],
             s["observacoes"], STATUS_LEGIVEL.get(s["status"], s["status"]),
             s["nota_validacao"], s["status"],
         ])
-    _aba(ws, colunas, linhas, "Servicos")
-    _formatar(ws, {8: "#,##0.00", 9: '"R$" #,##0.00'})
+    _aba(ws, colunas, linhas, "Servicos", destaque=(9, 10))
+    _formatar(ws, {8: "#,##0.00", 9: '"R$" #,##0.00', 10: '"R$" #,##0.00'})
+    return len(linhas)
 
 
 def _aba_detalhe(wb, final, precos):
@@ -187,6 +197,8 @@ def _aba_detalhe(wb, final, precos):
     linhas = []
     for it in precos["itens"]:
         for c in sorted(it["cotacoes"], key=lambda c: c["preco_unitario"]):
+            if P.fora_do_padrao(it, c):
+                c = dict(c, observacao=("Preço muito diferente das demais lojas: confira. " + c["observacao"]).strip())
             linhas.append([
                 it["id"], nomes.get(it["id"], ""), c["loja"], c["produto_encontrado"],
                 c["preco_embalagem"], c["unidade_venda"], c["conversao"], c["preco_unitario"],
@@ -259,6 +271,46 @@ def _aba_lojas(wb, precos, n_mat):
                 ws.cell(row=r, column=c).fill = PatternFill("solid", fgColor="FCE4D6")
 
 
+def _aba_resumo(wb, final, n_mat, l_tot, n_serv):
+    """Totais para conferir antes de montar a proposta comercial (fórmulas sobre os valores informados)."""
+    ws = wb.create_sheet("Resumo financeiro")
+    for col, larg in zip("ABC", (46, 20, 56)):
+        ws.column_dimensions[col].width = larg
+    ws["A1"] = "Resumo financeiro (preencha os valores nas abas Materiais e Serviços)"
+    ws["A1"].font = Font(bold=True, size=14)
+    moeda = '"R$" #,##0.00'
+    um, us = n_mat + 1, n_serv + 1
+    ws["A3"], ws["B3"] = "Materiais (preço adotado × quantidade para compra)", f"=SUM(Materiais!${l_tot}$2:${l_tot}${um})"
+    ws["A4"], ws["B4"] = "Serviços (valor unitário × quantidade)", f"=SUM(Serviços!$J$2:$J${us})"
+    ws["A5"], ws["B5"] = "Total geral", "=B3+B4"
+    ws["A6"], ws["B6"] = "Materiais sem preço adotado", f'={n_mat}-COUNT(Materiais!${l_tot}$2:${l_tot}${um})'
+    ws["A7"], ws["B7"] = "Serviços sem valor unitário", f'={n_serv}-COUNT(Serviços!$J$2:$J${us})'
+    for r in (3, 4, 5):
+        ws.cell(row=r, column=2).number_format = moeda
+    for r in (3, 4, 5, 6, 7):
+        ws.cell(row=r, column=1).font = Font(bold=(r == 5))
+        ws.cell(row=r, column=2).font = Font(bold=(r == 5))
+    ws["C6"] = "Itens sem preço ficam de fora do total: preencha antes de enviar a proposta."
+    ws["C6"].alignment = ws["C7"].alignment = Alignment(wrap_text=True, vertical="top")
+
+    def tabela(linha0, titulo, rotulos, aba, col_chave, col_val, n):
+        ws.cell(row=linha0, column=1, value=titulo).font = Font(bold=True, color="FFFFFF")
+        ws.cell(row=linha0, column=1).fill = CABECALHO
+        ws.cell(row=linha0, column=2, value="Total (R$)").font = Font(bold=True, color="FFFFFF")
+        ws.cell(row=linha0, column=2).fill = CABECALHO
+        for k, nome in enumerate(rotulos, start=linha0 + 1):
+            ws.cell(row=k, column=1, value=nome)
+            c = ws.cell(row=k, column=2,
+                        value=f'=SUMIF({aba}!${col_chave}$2:${col_chave}${n + 1},A{k},{aba}!${col_val}$2:${col_val}${n + 1})')
+            c.number_format = moeda
+        return linha0 + len(rotulos) + 2
+
+    areas = sorted({s["area_atuacao"] for s in final.get("servicos", [])})
+    etapas = sorted({m["etapa_obra"] for m in final.get("materiais", [])})
+    prox = tabela(9, "Serviços por área de atuação", areas, "Serviços", "C", "J", n_serv)
+    tabela(prox, "Materiais por etapa da obra", etapas, "Materiais", "B", l_tot, n_mat)
+
+
 def _aba_notas(wb, final, nome_projeto, precos):
     ws = wb.create_sheet("Notas da IA")
     ws.column_dimensions["A"].width = 28
@@ -304,11 +356,12 @@ def _aba_notas(wb, final, nome_projeto, precos):
 def gerar_planilha(final: dict, destino: Path, nome_projeto: str, precos: dict | None = None) -> Path:
     wb = Workbook()
     precos_idx = {i["id"]: i for i in precos["itens"]} if precos else None
-    n_mat = _aba_materiais(wb, final, precos_idx)
-    _aba_servicos(wb, final)
+    n_mat, l_tot = _aba_materiais(wb, final, precos_idx)
+    n_serv = _aba_servicos(wb, final)
     if precos:
         _aba_detalhe(wb, final, precos)
         _aba_lojas(wb, precos, n_mat)
+    _aba_resumo(wb, final, n_mat, l_tot, n_serv)
     _aba_notas(wb, final, nome_projeto, precos)
     destino = Path(destino)
     destino.parent.mkdir(parents=True, exist_ok=True)

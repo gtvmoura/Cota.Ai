@@ -1,0 +1,45 @@
+{
+  "_leia": "Copie para empresa/empresa.json (pasta ignorada pelo git) e preencha com os dados reais da construtora. O texto-padrão abaixo reproduz as cláusulas que a proposta de referência usa; ajuste ao jeito da empresa.",
+  "nome": "NOME DA CONSTRUTORA",
+  "logo": "empresa/logo.png",
+  "cidade": "Rio de Janeiro",
+  "prefixo_codigo": "CB",
+  "responsavel": {"nome": "Nome do Responsável", "telefone": "00.00000-0000", "email": "contato@empresa.com.br"},
+  "rodape": ["@instagram-da-empresa", "contato@empresa.com.br    www.site-da-empresa.com.br", "ENDEREÇO DA EMPRESA"],
+  "cor_barra": "4FB8E8",
+  "consideracoes_gerais": [
+    "Todo o gerenciamento de compras, recebimento e armazenamento será de nossa responsabilidade.",
+    "Será fornecida ART de responsabilidade de execução da obra por profissional habilitado no CREA (Engo Civil/arquiteto)"
+  ],
+  "nota_valor": "Este pagamento direto de mão de obra, poderá, em parte, ser feito direto ao sub-prestador, sob nossa solicitação",
+  "pagamento_padrao": [
+    {"rotulo": "SINAL", "percentual": 50, "quando": ""},
+    {"rotulo": "", "percentual": 12.5, "quando": "7 dias"},
+    {"rotulo": "", "percentual": 12.5, "quando": "14 dias"},
+    {"rotulo": "", "percentual": 12.5, "quando": "21 dias"},
+    {"rotulo": "Restante na entrega", "percentual": null, "quando": ""}
+  ],
+  "responsabilidades": {
+    "contratado": [
+      "Fornecimento de mão de obra especializada;",
+      "Respectivo acompanhamento e orientação dos serviços de terceiros;",
+      "Cumprimento do prazo de conclusão da obra;",
+      "Limpeza constante da obra."
+    ],
+    "contratante": [
+      "Pagamento das parcelas de mão de obra conforme cronograma a ser pactuado;",
+      "Fornecer todos os projetos executivos;"
+    ]
+  },
+  "inclusoes_padrao": [
+    "Todos os materiais de construção e acabamento estão incluídos no escopo",
+    "Caçambas para descarte do entulho, inclusa no escopo"
+  ],
+  "exclusoes_padrao": [
+    "SISTEMAS DE GÁS NÃO FAZEM PARTE DE NOSSO ESCOPO",
+    "SISTEMAS DE SPK / DETECÇÃO NÃO FAZEM PARTE DE NOSSO ESCOPO",
+    "COMUNICAÇÃO VISUAL NÃO FAZ PARTE DE NOSSO ESCOPO",
+    "EQUIPAMENTOS E MÓVEIS SOLTOS NÃO FAZEM PARTE DE NOSSO ESCOPO",
+    "LICENÇAS DE OBRAS NÃO FAZEM PARTE DE NOSSO ESCOPO"
+  ]
+}

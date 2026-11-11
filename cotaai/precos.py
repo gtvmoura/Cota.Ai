@@ -6,6 +6,7 @@ Este módulo confere os arquivos, junta os lotes e calcula o resumo por item.
 
 from __future__ import annotations
 
+import json
 import statistics
 from collections import OrderedDict
 
@@ -14,7 +15,8 @@ from .schema import PRECOS_SCHEMA, validar_schema
 ROTULO_ACESSO = {
     "pagina_aberta": "Página do produto aberta",
     "somente_busca": "Somente resultado de busca (preço pode estar desatualizado)",
-    "sem_acesso": "Sem acesso ao site",
+    "catalogo_sem_preco": "Site com catálogo, mas sem preços públicos: cotar por telefone ou WhatsApp",
+    "sem_acesso": "Sem acesso ao site (não consultada)",
     "sem_presenca_online": "Sem catálogo online encontrado: cotar por telefone ou WhatsApp",
 }
 ROTULO_STATUS = {
@@ -62,8 +64,20 @@ def validar(dados: dict, ids_materiais: set[str] | None = None) -> list[str]:
     return problemas
 
 
+def _status(cotacoes: list[dict], anterior: str) -> str:
+    """Recalcula o status do item: encontrado = 2 ou mais lojas com cotação exata/similar."""
+    validas = [c for c in cotacoes if c["equivalencia"] != "aproximada"]
+    if not cotacoes:
+        return anterior if anterior == "nao_aplicavel" else "nao_encontrado"
+    return "encontrado" if len({c["loja"] for c in validas}) >= 2 else "parcial"
+
+
 def mesclar(lotes: list[dict]) -> dict:
-    """Junta vários lotes (um por agente) em um único arquivo de preços."""
+    """Junta vários lotes (um por agente) em um único arquivo de preços.
+
+    Se o mesmo material aparece em mais de um arquivo (pesquisa complementar numa loja), as
+    cotações são somadas, as lojas pesquisadas unidas e o status recalculado.
+    """
     if not lotes:
         raise ValueError("nenhum lote para mesclar")
     lojas: "OrderedDict[str, dict]" = OrderedDict()
@@ -80,16 +94,31 @@ def mesclar(lotes: list[dict]) -> dict:
                 atual = lojas[l["loja"]]
                 atual["itens_pesquisados"] += l["itens_pesquisados"]
                 atual["itens_com_preco"] += l["itens_com_preco"]
-                # o acesso mais fraco prevalece (é o que o usuário precisa saber)
-                ordem = ["pagina_aberta", "somente_busca", "sem_acesso", "sem_presenca_online"]
-                if ordem.index(l["acesso"]) > ordem.index(atual["acesso"]):
+                # o acesso mais fraco prevalece (é o que o usuário precisa saber), mas só conta quem
+                # de fato pesquisou a loja: um lote com 0 itens pesquisados não diz nada sobre ela
+                ordem = ["pagina_aberta", "somente_busca", "catalogo_sem_preco", "sem_acesso", "sem_presenca_online"]
+                if l["itens_pesquisados"] > 0 and (
+                    atual["itens_pesquisados"] - l["itens_pesquisados"] == 0
+                    or ordem.index(l["acesso"]) > ordem.index(atual["acesso"])
+                ):
                     atual["acesso"] = l["acesso"]
                 if l["observacao"] and l["observacao"] not in atual["observacao"]:
                     atual["observacao"] = (atual["observacao"] + " " + l["observacao"]).strip()
         for it in lote["itens"]:
-            if it["id"] in itens:
-                raise ValueError(f"{it['id']} aparece em mais de um lote")
-            itens[it["id"]] = it
+            if it["id"] not in itens:
+                itens[it["id"]] = json.loads(json.dumps(it))
+                continue
+            base = itens[it["id"]]
+            existentes = {(c["loja"], c["fonte"]) for c in base["cotacoes"]}
+            base["cotacoes"] += [c for c in it["cotacoes"] if (c["loja"], c["fonte"]) not in existentes]
+            base["lojas_pesquisadas"] = list(dict.fromkeys(base["lojas_pesquisadas"] + it["lojas_pesquisadas"]))
+            if it["observacao"] and it["observacao"] not in base["observacao"]:
+                base["observacao"] = (base["observacao"] + " | " + it["observacao"]).strip(" |")
+            base["status"] = _status(base["cotacoes"], base["status"])
+    # uma loja que deu preço em algum lote não pode ficar como "sem acesso" ou "catálogo sem preço"
+    for l in lojas.values():
+        if l["itens_com_preco"] > 0 and l["acesso"] in ("sem_acesso", "catalogo_sem_preco", "sem_presenca_online"):
+            l["acesso"] = "somente_busca"
     return {
         "data_consulta": max(l["data_consulta"] for l in lotes),
         "regiao": lotes[0]["regiao"],
@@ -119,3 +148,30 @@ def resumo_item(item: dict) -> dict:
         "mediana": statistics.median(precos),
         "loja_min": menor["loja"],
     }
+
+
+def alertas(dados: dict, fator: float = 3.0) -> list[str]:
+    """Cotações muito distantes das demais do mesmo item (>= `fator` vezes a mediana, ou o inverso).
+
+    Só avalia itens com 3 ou mais cotações válidas. Serve para o usuário revisar: não remove nada.
+    """
+    saida = []
+    for it in dados["itens"]:
+        validas = [c for c in it["cotacoes"] if considerar(c)]
+        if len(validas) < 3:
+            continue
+        med = statistics.median(c["preco_unitario"] for c in validas)
+        for c in validas:
+            r = c["preco_unitario"] / med
+            if r >= fator or r <= 1 / fator:
+                saida.append(f"{it['id']} {c['loja']}: R$ {c['preco_unitario']:.2f} contra mediana R$ {med:.2f}")
+    return saida
+
+
+def fora_do_padrao(item: dict, cotacao: dict, fator: float = 3.0) -> bool:
+    validas = [c for c in item["cotacoes"] if considerar(c)]
+    if len(validas) < 3 or not considerar(cotacao):
+        return False
+    med = statistics.median(c["preco_unitario"] for c in validas)
+    r = cotacao["preco_unitario"] / med
+    return r >= fator or r <= 1 / fator

@@ -71,9 +71,11 @@ def test_precos_e_planilha(tmp_path):
     assert cli.main(["planilha", str(tmp_path / "etapa3_final.json")]) == 0
 
     wb = load_workbook(next(tmp_path.glob("*levantamento.xlsx")))
-    assert wb.sheetnames == ["Materiais", "Serviços", "Preços (detalhe)", "Lojas consultadas", "Notas da IA"]
+    assert wb.sheetnames == ["Materiais", "Serviços", "Preços (detalhe)", "Lojas consultadas", "Resumo financeiro", "Notas da IA"]
     m = wb["Materiais"]
     cab = [c.value for c in m[1]]
+    assert cab[18:20] == ["Preço adotado (R$/un)", "Total adotado (R$)"]
+    assert m["S2"].value == '=IF(K2="","",ROUND(K2,2))' and m["T2"].value == '=IF(S2="","",I2*S2)'
     assert cab[9:18] == ["Preço mín. (R$/un)", "Preço médio (R$/un)", "Preço máx. (R$/un)", "Cotações válidas",
                          "Loja do menor preço", "Lojas pesquisadas", "Total estimado, menor preço (R$)",
                          "Total estimado, preço médio (R$)", "Situação do preço"]
@@ -95,4 +97,4 @@ def test_precos_e_planilha(tmp_path):
     # sem preços a planilha continua no formato antigo
     assert cli.main(["planilha", str(tmp_path / "etapa3_final.json"), "--sem-precos",
                      "--destino", str(tmp_path / "sem.xlsx")]) == 0
-    assert load_workbook(tmp_path / "sem.xlsx").sheetnames == ["Materiais", "Serviços", "Notas da IA"]
+    assert load_workbook(tmp_path / "sem.xlsx").sheetnames == ["Materiais", "Serviços", "Resumo financeiro", "Notas da IA"]
