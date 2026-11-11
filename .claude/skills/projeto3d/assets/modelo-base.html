@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITULO}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: prancha de obra — cena 3D ocupa a tela, painel lateral lista as intervenções na ordem da planta "Construir / Demolir". */
+:root{
+  --paper:#eef1f2; --panel:#ffffff; --ink:#1b2a33; --muted:#5d6c75; --line:#d3dade;
+  --accent:#0f5e7a; --accent-ink:#ffffff;
+  --demo:#d6372b; --build:#128a43; --keep:#3b464d;
+  --scene:#dfe6e9; --ground:#cdd6da;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow","Segoe UI",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#11181c; --panel:#182227; --ink:#e7eef1; --muted:#9db0b9; --line:#2b3a42;
+    --accent:#6cc4e0; --accent-ink:#0b1a20;
+    --demo:#ff6b5e; --build:#4fd487; --keep:#b9c6cc;
+    --scene:#1a252b; --ground:#222f36; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#11181c; --panel:#182227; --ink:#e7eef1; --muted:#9db0b9; --line:#2b3a42;
+  --accent:#6cc4e0; --accent-ink:#0b1a20;
+  --demo:#ff6b5e; --build:#4fd487; --keep:#b9c6cc;
+  --scene:#1a252b; --ground:#222f36; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.4;display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+h1{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:.02em;margin:0;text-transform:uppercase}
+h1 small{font-family:var(--body);font-weight:400;font-size:13px;color:var(--muted);text-transform:none;letter-spacing:0;margin-left:8px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-left:auto}
+.seg button{font:600 15px var(--body);padding:8px 16px;border:0;background:transparent;color:var(--ink);cursor:pointer;border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+button:focus-visible,label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+main{flex:1;min-height:0;display:flex}
+#stage{position:relative;flex:1;min-width:0;background:var(--scene)}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.tag{position:absolute;transform:translate(-50%,-50%);font:600 13px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:color-mix(in srgb,var(--panel) 82%,transparent);padding:1px 7px;border-radius:3px;pointer-events:none;white-space:nowrap}
+.views{position:absolute;left:12px;bottom:12px;display:flex;flex-wrap:wrap;gap:6px}
+.views button,.views label,.orient button{font:500 13px var(--body);padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:6px}
+.orient{position:absolute;left:12px;top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:calc(100% - 110px)}
+.orient .lbl{font:600 12px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:color-mix(in srgb,var(--panel) 82%,transparent);padding:3px 7px;border-radius:4px}
+.orient button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.views .tr{gap:8px}
+.views input[type=range]{width:96px;accent-color:var(--accent)}
+.compass{position:absolute;right:12px;top:12px;width:82px;height:82px;border-radius:50%;background:color-mix(in srgb,var(--panel) 85%,transparent);border:1px solid var(--line);color:var(--ink);pointer-events:none}
+.compass text{font:600 8px var(--display);letter-spacing:.06em;fill:var(--ink)}
+.hint{position:absolute;right:12px;top:100px;font-size:12px;color:var(--muted);background:color-mix(in srgb,var(--panel) 82%,transparent);padding:3px 8px;border-radius:4px}
+aside{width:340px;flex:none;overflow:auto;border-left:1px solid var(--line);background:var(--panel);padding:14px 16px 20px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin:0 0 12px;padding:0;list-style:none}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+h2{font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:.05em;text-transform:uppercase;margin:16px 0 6px;display:flex;justify-content:space-between;align-items:baseline}
+h2 span{font:500 13px var(--body);color:var(--muted);text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
+ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+ol button{width:100%;text-align:left;font:400 14px/1.35 var(--body);color:var(--ink);background:transparent;border:1px solid transparent;border-left:4px solid var(--c);border-radius:4px;padding:6px 8px;cursor:pointer}
+ol button:hover{background:var(--paper)}
+ol button[aria-current="true"]{border-color:var(--c);background:var(--paper)}
+ol b{font-weight:600}
+ol em{display:block;font-style:normal;font-size:12px;color:var(--muted)}
+.note{font-size:12px;color:var(--muted);margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
+#err{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--muted)}
+@media (max-width:760px){
+  main{flex-direction:column}
+  #stage{flex:none;height:56%}
+  aside{width:auto;border-left:0;border-top:1px solid var(--line);flex:1}
+  .seg{margin-left:0;width:100%}.seg button{flex:1}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>{{TITULO}} <small>{{SUBTITULO}}</small></h1>
+  <div class="seg" role="group" aria-label="Fase da obra">
+    <button id="m-antes" aria-pressed="false">Antes</button>
+    <button id="m-obra" aria-pressed="true">Obra</button>
+    <button id="m-depois" aria-pressed="false">Depois</button>
+  </div>
+</header>
+<main>
+  <div id="stage">
+    <div id="err">Não foi possível carregar o visualizador 3D neste navegador.</div>
+    <div class="orient" role="group" aria-label="Orientação da câmera">
+      <span class="lbl">Ver de</span>
+      <button id="o-rua" aria-pressed="false">Rua</button>
+      <button id="o-fundos" aria-pressed="false">Fundos</button>
+      <button id="o-esq" aria-pressed="false">Esquerda</button>
+      <button id="o-dir" aria-pressed="false">Direita</button>
+      <button id="o-l" aria-label="Girar 90 graus para a esquerda" title="Girar 90° para a esquerda">&#8634; 90°</button>
+      <button id="o-r" aria-label="Girar 90 graus para a direita" title="Girar 90° para a direita">&#8635; 90°</button>
+    </div>
+    <div class="compass" aria-hidden="true">
+      <svg viewBox="-41 -41 82 82" width="100%" height="100%">
+        <circle r="37" fill="none" stroke="currentColor" stroke-opacity=".25"/>
+        <g id="needle">
+          <polygon points="0,-25 6,0 -6,0" fill="var(--accent)"/>
+          <polygon points="0,25 6,0 -6,0" fill="none" stroke="currentColor" stroke-opacity=".45"/>
+          <text id="needle-lbl" x="0" y="-29" text-anchor="middle">RUA</text>
+        </g>
+        <circle r="2.5" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="views">
+      <button id="v-persp">Perspectiva</button>
+      <button id="v-top">Planta</button>
+      <button id="v-front">Fachada</button>
+      <label><input type="checkbox" id="furn" checked> Mobiliário</label>
+      <label><input type="checkbox" id="walls" checked> Paredes translúcidas</label>
+      <label class="tr">Transparência <input type="range" id="tr" min="0" max="90" value="85" aria-label="Transparência das paredes"></label>
+    </div>
+    <div class="hint">Arraste para girar · role para aproximar</div>
+  </div>
+  <aside>
+    <ul class="legend">
+      <li><span class="sw" style="background:var(--keep)"></span>Existente a manter</li>
+      <li><span class="sw" style="background:var(--demo)"></span>Demolir ou remover</li>
+      <li><span class="sw" style="background:var(--build)"></span>Construir ou instalar</li>
+    </ul>
+    <h2>Demolir e remover <span id="n-d"></span></h2>
+    <ol id="list-d"></ol>
+    <h2>Construir e instalar <span id="n-n"></span></h2>
+    <ol id="list-n"></ol>
+    <p class="note">{{NOTA}}</p>
+  </aside>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+/* ============ PARÂMETROS DA OBRA (edite) ============
+   Unidades da geometria: centímetros. Origem no canto superior esquerdo da planta,
+   x para a direita, z para BAIXO da planta (a rua fica em z grande), y para cima. */
+const PROJ={
+  centro:[2.5,2.0],      // centro da construção em METROS [x,z]
+  raio:11,               // distância das vistas externas, em metros (aprox. 2x a maior dimensão)
+  fachada:{cam:[2.5,2.0,11],alvo:[2.5,1.2,4.1]},   // vista "Fachada": câmera e alvo, em metros
+  rotulos:[['Sala',250,200],['Rua',250,470]]          // [texto, x_cm, z_cm, 'depois' (opcional)]
+};
+const stage=document.getElementById('stage');
+if(!window.THREE||!THREE.OrbitControls){document.getElementById('err').style.display='flex';return;}
+
+/* ---------- cores do projeto (prancha 06) ---------- */
+const C={tijolo:0xb0654a, reboco:0xd9d3c8, branco:0xf2f0ea, azul:0xa9dee4, rosa:0xe8a2c5, pink:0xec008c,
+  terracota:0xa9623f, ceramica:0xe6e4dd, vidro:0x9fd3e6, madeira:0x8a5a36, inox:0xb9c1c6, gesso:0xf4f4f1,
+  kraft:0xf3efe6, movel:0x8fb6d9, freezer:0xdfe5e8, aco:0xeeeeee};
+
+/* ---------- cena ---------- */
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+stage.insertBefore(renderer.domElement,stage.firstChild);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(40,1,0.1,500);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.maxPolarAngle=Math.PI/2-0.03; controls.minDistance=2; controls.maxDistance=40;
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a9299,0.85));
+const sun=new THREE.DirectionalLight(0xffffff,0.55); sun.position.set(-6,12,9); scene.add(sun);
+
+const root=new THREE.Group(); root.scale.setScalar(0.01); scene.add(root); // modelo em centímetros
+const CENTER=new THREE.Vector3(PROJ.centro[0],0,PROJ.centro[1]);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshLambertMaterial());
+ground.rotation.x=-Math.PI/2; ground.position.set(CENTER.x,-0.04,CENTER.z); scene.add(ground);
+
+/* ---------- elementos ----------
+   fase: K = existente mantido, D = demolir/remover, N = construir/instalar, F = mobiliário (só no "Depois") */
+const els=[];
+function reg(mesh,fase,antes,depois,grupo,alpha){
+  mesh.material=new THREE.MeshLambertMaterial({color:antes,transparent:true});
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,30),new THREE.LineBasicMaterial({color:0x1b2a33,transparent:true}));
+  mesh.add(edges); root.add(mesh);
+  els.push({mesh,edges,fase,antes:new THREE.Color(antes),depois:new THREE.Color(depois===undefined?antes:depois),grupo,alpha:alpha||1,op:0});
+  return mesh;
+}
+function box(x1,x2,z1,z2,y1,y2,fase,antes,depois,grupo,alpha){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(x2-x1,y2-y1,z2-z1));
+  m.position.set((x1+x2)/2,(y1+y2)/2,(z1+z2)/2);
+  return reg(m,fase,antes,depois,grupo,alpha);
+}
+// parede inclinada entre dois pontos da face interna; a espessura cresce para o lado "fora"
+function seg(xa,za,xb,zb,t,y1,y2,fora,fase,antes,depois){
+  const dx=xb-xa,dz=zb-za,L=Math.hypot(dx,dz),nx=dz/L*fora,nz=-dx/L*fora;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(L+t,y2-y1,t));
+  m.position.set((xa+xb)/2+nx*t/2,(y1+y2)/2,(za+zb)/2+nz*t/2); m.rotation.y=-Math.atan2(dz,dx);
+  return reg(m,fase,antes,depois);
+}
+function piso(pts,cor,depois,fase,grupo){
+  const s=new THREE.Shape(pts.map(p=>new THREE.Vector2(p[0],p[1])));
+  const g=new THREE.ShapeGeometry(s); g.rotateX(Math.PI/2);
+  const m=new THREE.Mesh(g); m.material=null; m.position.y=fase==='N'?0.6:0;
+  reg(m,fase||'K',cor,depois,grupo); els[els.length-1].mesh.material.side=THREE.DoubleSide; return m;
+}
+const H=300, V=210; // pé-direito e altura dos vãos, em cm (ajuste ao projeto)
+
+/* ============ GEOMETRIA DA OBRA (substitua o exemplo) ============
+   Funções:  box(x1,x2,z1,z2,y1,y2, fase, corAntes, corDepois, grupo, alpha)
+             seg(xa,za,xb,zb, espessura, y1,y2, lado(+1/-1), fase, corAntes, corDepois)   // parede inclinada
+             piso([[x,z],...], corAntes, corDepois, fase, grupo)
+             F(x1,x2,z1,z2,y1,y2,cor,alpha)  mobiliário (fase 'F', só aparece no "Depois")
+             cyl(x,z,y1,y2,raio,cor,fase,alpha)
+   fase:  'K' existente mantido · 'D' demolir/remover · 'N' construir/instalar · 'F' mobiliário
+   grupo: id do item da lista lateral (clicar no item aproxima a câmera e pisca o grupo).
+   Uma parede é qualquer elemento K/D/N com altura >= 90 cm e espessura <= 35 cm: ela fica translúcida
+   quando está entre a câmera e o interior. */
+function F(x1,x2,z1,z2,y1,y2,cor,alpha){return box(x1,x2,z1,z2,y1,y2,'F',cor,cor,null,alpha);}
+function cyl(x,z,y1,y2,r,cor,fase,alpha){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,y2-y1,16)); m.position.set(x,(y1+y2)/2,z);
+  return reg(m,fase||'F',cor,cor,null,alpha);
+}
+
+/* --- exemplo: sala 5,00 x 4,00 m, com uma parede a demolir, uma porta nova e uma mesa --- */
+piso([[0,0],[500,0],[500,400],[0,400]],C.ceramica);
+box(-10,510,-10,0,0,H,'K',C.reboco,C.branco);                    // parede dos fundos
+box(-10,0,0,400,0,H,'K',C.reboco,C.branco);                      // lateral esquerda
+box(500,510,0,400,0,H,'K',C.reboco,C.branco);                    // lateral direita
+box(-10,150,400,410,0,H,'K',C.reboco,C.branco);                  // frente, trecho esquerdo
+box(250,510,400,410,0,H,'K',C.reboco,C.branco);                  // frente, trecho direito
+box(150,250,400,410,V,H,'K',C.reboco,C.branco);                  // frente, acima do vão
+box(150,250,400,410,0,V,'D',C.reboco,C.reboco,'d-vao');          // parede a demolir (vira vão de acesso)
+box(150,250,402,407,0,V,'N',C.madeira,C.madeira,'n-porta');      // porta nova
+box(500,510,100,300,100,V,'K',C.vidro,C.vidro,null,0.45);        // janela existente
+F(100,260,120,200,0,75,0x8a5a36);                                // mesa
+cyl(125,235,0,45,18,0x4a555c); cyl(235,235,0,45,18,0x4a555c);   // bancos
+
+/* ---------- paredes: quais elementos são paredes e onde ficam (em metros) ---------- */
+root.updateMatrixWorld(true);
+(function(){
+  const bb=new THREE.Box3(), sz=new THREE.Vector3(), ct=new THREE.Vector3();
+  els.forEach(e=>{
+    const g=e.mesh.geometry; g.computeBoundingBox(); g.boundingBox.getSize(sz);
+    e.wall=e.fase!=='F' && sz.y>=90 && Math.min(sz.x,sz.z)<=35;
+    if(e.wall){bb.setFromObject(e.mesh); bb.getCenter(ct); e.cx=ct.x; e.cz=ct.z;}
+  });
+})();
+
+/* ---------- intervenções (textos da prancha 02 e 06) ---------- */
+/* ============ LISTA LATERAL (substitua o exemplo): [grupo, 'D' ou 'N', título, descrição] ============ */
+const itens=[
+ ['d-vao','D','Parede da frente','Demolir o trecho de 1,00 m para abrir o acesso.'],
+ ['n-porta','N','Porta nova','Porta de madeira 1,00 × 2,10 m, com pintura.']
+];
+const btn={};
+itens.forEach(it=>{
+  const b=document.createElement('button'); b.style.setProperty('--c',it[1]==='D'?'var(--demo)':'var(--build)');
+  b.innerHTML='<b></b><em></em>'; b.firstChild.textContent=it[2]; b.lastChild.textContent=it[3];
+  b.onclick=()=>focar(it[0],it[1]); btn[it[0]]=b;
+  const li=document.createElement('li'); li.appendChild(b); document.getElementById(it[1]==='D'?'list-d':'list-n').appendChild(li);
+});
+document.getElementById('n-d').textContent=itens.filter(i=>i[1]==='D').length+' itens';
+document.getElementById('n-n').textContent=itens.filter(i=>i[1]==='N').length+' itens';
+
+/* ---------- fases ---------- */
+let modo='obra', foco=null, t0=0;
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const cinza=new THREE.Color(0x9aa3a8), cD=new THREE.Color(), cN=new THREE.Color(), tmp=new THREE.Color();
+function tema(){
+  scene.background=new THREE.Color(css('--scene')); ground.material.color.set(css('--ground'));
+  cD.set(css('--demo')); cN.set(css('--build'));
+}
+function alvo(e){ // opacidade e cor de cada elemento na fase atual
+  const mob=document.getElementById('furn').checked;
+  let v=0,c=e.antes;
+  if(modo==='antes'){v=(e.fase==='K'||e.fase==='D')?1:0;c=e.antes;}
+  else if(modo==='depois'){v=(e.fase==='K'||e.fase==='N'||(e.fase==='F'&&mob))?1:0;c=e.depois;}
+  else{v=e.fase==='F'?0:1;c=e.fase==='D'?cD:e.fase==='N'?cN:tmp.copy(e.antes).lerp(cinza,0.75);}
+  return [v*e.alpha*(modo==='obra'&&e.fase==='D'?0.8:1),c];
+}
+function setModo(m){
+  modo=m; ['antes','obra','depois'].forEach(k=>document.getElementById('m-'+k).setAttribute('aria-pressed',k===m));
+}
+['antes','obra','depois'].forEach(k=>document.getElementById('m-'+k).onclick=()=>setModo(k));
+
+/* ---------- câmera ---------- */
+const goal={p:new THREE.Vector3(),t:new THREE.Vector3(),on:false};
+const sph={on:false,az:0,el:0,d:0,t:new THREE.Vector3()}; let rot=0;
+const T0=new THREE.Vector3(CENTER.x,0.6,CENTER.z);
+function ir(p,t){sph.on=false;rot=0;goal.p.copy(p);goal.t.copy(t);goal.on=true;}
+// vai para um ponto de vista dado por azimute (0 = lado da rua), elevação e distância, girando em volta da loja
+function verDe(az,elGraus,d,btn){
+  goal.on=false;rot=0;sph.on=true;sph.az=az;sph.el=elGraus*Math.PI/180;sph.d=d;sph.t.copy(T0);
+  ['rua','fundos','esq','dir'].forEach(k=>document.getElementById('o-'+k).setAttribute('aria-pressed',k===btn));
+}
+const vistas={
+  persp:()=>verDe(-0.62,53,PROJ.raio),
+  top:()=>verDe(0,88,PROJ.raio*1.06),
+  front:()=>ir(new THREE.Vector3(...PROJ.fachada.cam),new THREE.Vector3(...PROJ.fachada.alvo))
+};
+Object.keys(vistas).forEach(k=>document.getElementById('v-'+k).onclick=vistas[k]);
+document.getElementById('o-rua').onclick=()=>verDe(0,35,PROJ.raio,'rua');
+document.getElementById('o-fundos').onclick=()=>verDe(Math.PI,35,PROJ.raio,'fundos');
+document.getElementById('o-esq').onclick=()=>verDe(-Math.PI/2,35,PROJ.raio,'esq');
+document.getElementById('o-dir').onclick=()=>verDe(Math.PI/2,35,PROJ.raio,'dir');
+const limpa=()=>['rua','fundos','esq','dir'].forEach(k=>document.getElementById('o-'+k).setAttribute('aria-pressed','false'));
+document.getElementById('o-l').onclick=()=>{goal.on=false;sph.on=false;rot+=Math.PI/2;limpa();};
+document.getElementById('o-r').onclick=()=>{goal.on=false;sph.on=false;rot-=Math.PI/2;limpa();};
+controls.addEventListener('start',()=>{goal.on=false;sph.on=false;rot=0;
+  ['rua','fundos','esq','dir'].forEach(k=>document.getElementById('o-'+k).setAttribute('aria-pressed','false'));});
+const elWalls=document.getElementById('walls'), elTr=document.getElementById('tr');
+const needle=document.getElementById('needle'), needleLbl=document.getElementById('needle-lbl');
+const suave=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+function focar(id,fase){
+  if(modo==='antes'&&fase==='N'||modo==='depois'&&fase==='D') setModo('obra');
+  Object.keys(btn).forEach(k=>btn[k].setAttribute('aria-current',k===id)); foco=id; t0=performance.now();
+  const b=new THREE.Box3(); els.filter(e=>e.grupo===id).forEach(e=>b.expandByObject(e.mesh));
+  const c=b.getCenter(new THREE.Vector3()); const dir=camera.position.clone().sub(controls.target).normalize();
+  ir(c.clone().add(dir.multiplyScalar(7.5)),c);
+}
+
+/* ---------- rótulos ---------- */
+const tags=PROJ.rotulos.map(t=>{
+  const d=document.createElement('div'); d.className='tag'; d.textContent=t[0]; stage.appendChild(d);
+  return {d,v:new THREE.Vector3(t[1]/100,0.05,t[2]/100),so:t[3]};
+});
+
+function resize(){const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(stage);
+new MutationObserver(tema).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',tema);
+
+const reduz=matchMedia('(prefers-reduced-motion: reduce)').matches, v3=new THREE.Vector3();
+function frame(now){
+  requestAnimationFrame(frame);
+  const k=reduz?1:0.12;
+  // direção horizontal do centro da loja até a câmera: paredes do lado da câmera ficam translúcidas
+  const dxh=camera.position.x-CENTER.x, dzh=camera.position.z-CENTER.z, lh=Math.hypot(dxh,dzh)||1;
+  const ux=dxh/lh, uz=dzh/lh, hf=suave((lh-1.5)/5), trOn=elWalls.checked, minA=1-(+elTr.value)/100;
+  els.forEach(e=>{
+    const a=alvo(e); let t=0;
+    if(trOn&&e.wall) t=suave(((e.cx-CENTER.x)*ux+(e.cz-CENTER.z)*uz-0.3)/1.4)*hf;
+    e.op+=(a[0]*(1-t*(1-minA))-e.op)*k; e.mesh.material.color.lerp(a[1],k);
+    const pulso=(e.grupo&&e.grupo===foco&&now-t0<2400)?0.35*(0.5+0.5*Math.sin((now-t0)/130)):0;
+    e.mesh.material.emissive.setScalar(pulso);
+    e.mesh.visible=e.op>0.02; e.mesh.material.opacity=e.op; e.mesh.material.depthWrite=e.op>0.9;
+    e.edges.material.opacity=Math.max(e.op*(e.fase==='F'?0.3:0.55),a[0]>0.02?0.16:0);
+  });
+  if(goal.on){camera.position.lerp(goal.p,reduz?1:0.08);controls.target.lerp(goal.t,reduz?1:0.08); if(camera.position.distanceTo(goal.p)<0.02)goal.on=false;}
+  if(Math.abs(rot)>0.002){ // girar em volta do alvo
+    const st=reduz?rot:rot*0.12, c=Math.cos(st), sn=Math.sin(st), px=camera.position.x-controls.target.x, pz=camera.position.z-controls.target.z;
+    camera.position.x=controls.target.x+px*c+pz*sn; camera.position.z=controls.target.z-px*sn+pz*c; rot-=st;
+  } else rot=0;
+  if(sph.on){ // aproximar do ponto de vista girando em volta da loja, sem atravessar as paredes
+    const off=camera.position.clone().sub(controls.target); let d=off.length(), az=Math.atan2(off.x,off.z), el=Math.asin(off.y/d);
+    let da=sph.az-az; da=Math.atan2(Math.sin(da),Math.cos(da)); const kk=reduz?1:0.1;
+    az+=da*kk; el+=(sph.el-el)*kk; d+=(sph.d-d)*kk; controls.target.lerp(sph.t,kk);
+    camera.position.set(controls.target.x+d*Math.cos(el)*Math.sin(az),controls.target.y+d*Math.sin(el),controls.target.z+d*Math.cos(el)*Math.cos(az));
+    if(Math.abs(da)<0.003&&Math.abs(sph.el-el)<0.003&&Math.abs(sph.d-d)<0.03&&controls.target.distanceTo(sph.t)<0.02) sph.on=false;
+  }
+  controls.update(); renderer.render(scene,camera);
+  { // bússola: a seta aponta para o lado da rua
+    const ox=camera.position.x-controls.target.x, oz=camera.position.z-controls.target.z, deg=Math.atan2(ox,oz)*180/Math.PI+180;
+    needle.setAttribute('transform','rotate('+deg.toFixed(1)+')');
+    needleLbl.setAttribute('transform','rotate('+(-deg).toFixed(1)+' 0 -29)');
+  }
+  const w=stage.clientWidth,h=stage.clientHeight;
+  tags.forEach(t=>{v3.copy(t.v).project(camera); const ok=v3.z<1&&(!t.so||t.so===modo);
+    t.d.style.display=ok?'':'none'; t.d.style.left=((v3.x+1)/2*w)+'px'; t.d.style.top=((1-v3.y)/2*h)+'px';});
+}
+tema(); resize(); camera.position.set(CENTER.x-0.35*PROJ.raio,0.79*PROJ.raio,CENTER.z+0.49*PROJ.raio); controls.target.copy(CENTER); setModo('obra');
+els.forEach(e=>{const a=alvo(e); e.op=a[0]; e.mesh.material.color.copy(a[1]);});
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -50,6 +50,22 @@ Cores das linhas: **amarelo** = corrigido, **azul** = adicionado pelo validador,
 > ⚠️ Os quantitativos são gerados por IA. Use a memória de cálculo para conferir os
 > itens mais caros antes de fechar contratos.
 
+## Skills do Claude Code
+
+O repositório traz duas skills em `.claude/skills/`. Abra o Claude Code na pasta do projeto e
+digite o comando (sem acento: `/cotacao`):
+
+| Comando | O que faz |
+|---|---|
+| `/cotacao [projeto]` | Roda os três agentes (extrator, validador, revisor final) sobre o projeto e entrega a planilha Excel com as abas Materiais e Serviços, mais as pendências a confirmar antes de cotar. Não precisa de chave da API: usa o seu plano do Claude. |
+| `/projeto3d [projeto]` | Monta a visualização 3D da obra com as fases Antes, Obra (o que demolir e o que construir) e Depois (com mobiliário), paredes translúcidas conforme o ângulo, botões de orientação e bússola. Publica como página privada. |
+
+Exemplo: anexe o PDF do projeto na conversa e digite `/cotacao`, depois `/projeto3d`.
+Os dois comandos usam o mesmo projeto e guardam os resultados em `cotacoes/<obra>/`.
+
+> **Projetos de clientes:** não envie projetos nem planilhas de clientes para um repositório
+> público. Deixe `projetos/` e `cotacoes/` fora do git ou torne o repositório privado.
+
 ## Instalação
 
 Requer Python 3.10+ e uma chave da API da Anthropic
