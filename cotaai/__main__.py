@@ -3,7 +3,9 @@
   python -m cotaai processar projetos/casa-silva           # um projeto (arquivo ou pasta)
   python -m cotaai novos                                    # todos os projetos ainda não processados
   python -m cotaai monitorar                                # fica de olho na pasta e processa sozinho
-  python -m cotaai planilha cotacoes/casa-silva/etapa3_final.json   # só regera o Excel
+  python -m cotaai planilha cotacoes/casa-silva/etapa3_final.json   # regera o Excel (usa precos.json se existir)
+  python -m cotaai precos-mesclar cotacoes/casa-silva/precos_lote*.json --final cotacoes/casa-silva/etapa3_final.json
+  python -m cotaai precos-checar cotacoes/casa-silva/precos.json --final cotacoes/casa-silva/etapa3_final.json
 """
 
 from __future__ import annotations
@@ -53,6 +55,18 @@ def main(argv=None) -> int:
     p = sub.add_parser("planilha", help="regera o Excel a partir de um JSON de etapa")
     p.add_argument("json", type=Path)
     p.add_argument("--destino", type=Path)
+    p.add_argument("--precos", type=Path, help="JSON de preços (padrão: precos.json ao lado do JSON da etapa)")
+    p.add_argument("--sem-precos", action="store_true", help="gera a planilha sem as colunas de preço")
+
+    p = sub.add_parser("precos-mesclar", help="junta os lotes de pesquisa de preços em precos.json")
+    p.add_argument("lotes", type=Path, nargs="+")
+    p.add_argument("--saida", type=Path)
+    p.add_argument("--final", type=Path, help="etapa3_final.json, para conferir os ids dos materiais")
+
+    p = sub.add_parser("precos-checar", help="confere um JSON de preços")
+    p.add_argument("json", type=Path)
+    p.add_argument("--final", type=Path, help="etapa3_final.json, para conferir os ids dos materiais")
+    p.add_argument("--lote", type=Path, help="lote_NN_materiais.json: confere só os ids desse lote")
 
     a = ap.parse_args(argv)
 
@@ -89,7 +103,41 @@ def main(argv=None) -> int:
         dados = json.loads(a.json.read_text(encoding="utf-8"))
         nome = a.json.parent.name
         destino = a.destino or a.json.with_name(f"{nome} - levantamento.xlsx")
-        print(gerar_planilha(dados, destino, nome))
+        arq_precos = a.precos or a.json.with_name("precos.json")
+        precos = None
+        if not a.sem_precos and arq_precos.exists():
+            precos = json.loads(arq_precos.read_text(encoding="utf-8"))
+            print(f"Usando preços de {arq_precos}")
+        print(gerar_planilha(dados, destino, nome, precos))
+        return 0
+
+    if a.cmd in ("precos-mesclar", "precos-checar"):
+        from . import precos as P
+        ids = None
+        if a.final:
+            fin = json.loads(a.final.read_text(encoding="utf-8"))
+            ids = {m["id"] for m in fin["materiais"]}
+        if getattr(a, "lote", None):
+            ids = {m["id"] for m in json.loads(a.lote.read_text(encoding="utf-8"))["materiais"]}
+        if a.cmd == "precos-mesclar":
+            lotes = [json.loads(p.read_text(encoding="utf-8")) for p in a.lotes]
+            for p, lote in zip(a.lotes, lotes):
+                probs = P.validar(lote)
+                if probs:
+                    print(f"{p.name}: " + "; ".join(probs[:5]), file=sys.stderr)
+                    return 1
+            dados = P.mesclar(lotes)
+            saida = a.saida or a.lotes[0].with_name("precos.json")
+            saida.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"{saida}: {len(dados['itens'])} itens, {len(dados['lojas'])} lojas")
+            a.json = saida
+        dados = json.loads(a.json.read_text(encoding="utf-8"))
+        probs = P.validar(dados, ids)
+        if probs:
+            print("PROBLEMAS:\n- " + "\n- ".join(probs), file=sys.stderr)
+            return 1
+        enc = sum(1 for i in dados["itens"] if i["status"] in ("encontrado", "parcial"))
+        print(f"OK: {len(dados['itens'])} itens ({enc} com preço), {len(dados['lojas'])} lojas")
         return 0
     return 0
 
