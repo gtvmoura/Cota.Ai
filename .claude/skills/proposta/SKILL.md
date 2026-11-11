@@ -52,7 +52,7 @@ Pergunte (AskUserQuestion, só o que ainda não souber) e grave em `proposta.jso
 | `data` | data da proposta (AAAA-MM-DD) |
 | `tipo_obra` | "Reforma comercial", "Obra nova residencial"... (entra na frase de abertura) |
 | `referencia` | "Orçamento Serviço" ou o assunto |
-| `projeto_referencia` | arquivo e data do projeto base ("HB_SK-ARQ-RO de 31/07/26") |
+| `projeto_referencia` | arquivo e data do projeto base ("PROJETO-ARQ-R0 de 31/07/26") |
 | `prazo_dias` | prazo de entrega em dias corridos |
 | `pagamento` | parcelas (padrão da empresa, ou outras: `rotulo`, `percentual`, `quando`; `percentual: null` = restante) |
 | `valores.modo` | `global` (um valor total, como no modelo) ou `detalhado` (materiais e mão de obra por área) |
