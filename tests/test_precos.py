@@ -74,14 +74,23 @@ def test_precos_e_planilha(tmp_path):
     assert wb.sheetnames == ["Materiais", "Serviços", "Preços (detalhe)", "Lojas consultadas", "Resumo financeiro", "Notas da IA"]
     m = wb["Materiais"]
     cab = [c.value for c in m[1]]
-    assert cab[18:20] == ["Preço adotado (R$/un)", "Total adotado (R$)"]
-    assert m["S2"].value == '=IF(K2="","",ROUND(K2,2))' and m["T2"].value == '=IF(S2="","",I2*S2)'
-    assert cab[9:18] == ["Preço mín. (R$/un)", "Preço médio (R$/un)", "Preço máx. (R$/un)", "Cotações válidas",
-                         "Loja do menor preço", "Lojas pesquisadas", "Total estimado, menor preço (R$)",
-                         "Total estimado, preço médio (R$)", "Situação do preço"]
+    assert cab[9:19] == ["Preço mín. (R$/un)", "Preço médio (R$/un)", "Preço máx. (R$/un)", "Cotações válidas",
+                         "Loja do menor preço", "Preços por loja (R$/un)", "Lojas pesquisadas",
+                         "Total estimado, menor preço (R$)", "Total estimado, preço médio (R$)", "Situação do preço"]
+    assert cab[19:21] == ["Preço adotado (R$/un)", "Total adotado (R$)"]
+    assert m["T2"].value == '=IF(K2="","",ROUND(K2,2))' and m["U2"].value == '=IF(T2="","",I2*T2)'
     assert "_xlfn.MINIFS" in m["J2"].value and "'Preços (detalhe)'" in m["J2"].value
-    assert m["N2"].value == "Loja A" and m["O2"].value == "Loja A, Loja B, Loja C" and m["R2"].value == "Encontrado"
-    assert m["R3"].value == "Não encontrado" and m["P2"].value == "=IF(J2=\"\",\"\",I2*J2)"
+    assert m["N2"].value == "Loja A" and m["P2"].value == "Loja A, Loja B, Loja C" and m["S2"].value == "Encontrado"
+    assert m["S3"].value == "Não encontrado" and m["Q2"].value == '=IF(J2="","",I2*J2)'
+    # preço de cada loja em texto: visível em qualquer programa, com as marcas de cada cotação
+    assert m["O2"].value == ("Loja B R$ 1,00 (sem estoque) | Loja A R$ 2,10 | Loja B R$ 2,50 | Loja A R$ 9,00 (aprox.)")
+    assert m["O3"].value in (None, "")
+    # os resultados das fórmulas estão gravados no arquivo (programas que não recalculam mostram isso)
+    mv = load_workbook(next(tmp_path.glob("*levantamento.xlsx")), data_only=True)["Materiais"]
+    assert mv["I2"].value == 3160.5 and mv["J2"].value == 2.1 and mv["K2"].value == 2.3 and mv["L2"].value == 2.5
+    assert mv["M2"].value == 2 and abs(mv["Q2"].value - 3160.5 * 2.1) < 1e-6 and abs(mv["R2"].value - 3160.5 * 2.3) < 1e-6
+    assert mv["T2"].value == 2.3 and abs(mv["U2"].value - 3160.5 * 2.3) < 1e-6
+    assert mv["J3"].value in (None, "") and mv["U3"].value in (None, "") and mv["M3"].value == 0
     d = wb["Preços (detalhe)"]
     assert d.max_row == 5  # 4 cotações do M001 + cabeçalho
     considerar = {(d.cell(r, 3).value, d.cell(r, 8).value): d.cell(r, 11).value for r in range(2, 6)}
