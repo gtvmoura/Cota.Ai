@@ -1,7 +1,7 @@
 # Cota.Ai como plataforma: prompt mestre e sugestões
 
-> Versão 1 do alinhamento (22/11/2026). As decisões estão na seção 0; o que continua
-> **[A DEFINIR]** depende da escolha de infraestrutura (seção 5).
+> Versão 2 do alinhamento (22/11/2026). As decisões estão na seção 0 e a infraestrutura escolhida
+> (opção A, só planos gratuitos) na seção 5.
 
 ## 0. Decisões do alinhamento
 
@@ -27,6 +27,9 @@
 | Link para o cliente final | Link de visualização sem login, com prazo de validade e opção de revogar (decisão minha, pode mudar) |
 | Marca | Ainda sem manual; criamos uma identidade simples na v1 |
 | Teste grátis | 1 obra por cliente |
+| Custos fixos | Zero: só planos gratuitos; o único gasto é a API da Anthropic |
+| Infraestrutura | Opção A com planos gratuitos: Vercel Hobby + Supabase Free + GitHub Actions como worker |
+| Endereço | Subdomínio gratuito da Vercel (ex.: `cota-ai.vercel.app`) até existir domínio próprio |
 | Precisão | Há projetos reais com orçamento fechado para medir o erro antes dos testes |
 | Sigilo | Prevenir sempre: dados isolados por empresa, arquivos privados, LGPD |
 
@@ -80,7 +83,8 @@ trocar o que hoje depende do Claude Code por chamadas de API.**
 - **Front:** Next.js na Vercel. Planilha exibida na própria página (filtros, cores, edição) e
   exportável para Excel/PDF.
 - **Worker:** reaproveita `cotaai/` quase inteiro. Processos levam de 5 a 40 minutos, então rodam
-  fora da requisição web (Vercel Workflow, ou um worker em Railway/Fly/Cloud Run). **[A DEFINIR]**
+  fora da requisição web, no GitHub Actions deste repositório privado, disparado pelo site
+  (veja a seção 5).
 - **Preços sem Claude Code:** a etapa 4 passa a usar a API com as ferramentas de busca e leitura
   de páginas do servidor da Anthropic, mais fontes estruturadas (SINAPI, lojas com API).
 - **Compartilhamento:** cada obra gera um link de visualização sem login, com validade e opção de
@@ -127,11 +131,9 @@ trocar o que hoje depende do Claude Code por chamadas de API.**
 3. **Painel de custo por obra** (tokens + buscas) para definir o preço do plano.
 4. **LGPD e sigilo**: projetos de clientes em armazenamento privado, por empresa, com exclusão sob
    pedido; nunca em repositório público.
-5. **Atenção, repositório público:** em 22/11/2026 o repositório `gtvmoura/Cota.Ai` está
-   **público**. O workflow `.github/workflows/cotacao.yml` grava projetos e planilhas em
-   `projetos/` e `cotacoes/` dentro do repositório, ou seja, ficariam visíveis para qualquer
-   pessoa. Antes de usar com qualquer projeto real: tornar o repositório privado (ou migrar para
-   o privado `gtvmoura/cota-a-`) e, na plataforma, guardar arquivos só no armazenamento privado.
+5. **Repositório:** o projeto foi migrado em 22/11/2026 do repositório público `gtvmoura/Cota.Ai`
+   para o privado `gtvmoura/cota-a-`. Mesmo privado, projetos e planilhas de clientes ficam só no
+   armazenamento privado da plataforma (Supabase), nunca em commits nem em logs do GitHub Actions.
 
 ## 4. Prompt mestre para construir a plataforma
 
@@ -193,14 +195,41 @@ Antes de codar cada entrega, apresente o plano, as tabelas do banco e as telas; 
 com testes e um roteiro de verificação manual.
 ```
 
-## 5. Opções de infraestrutura (pergunta 33)
+## 5. Infraestrutura escolhida: opção A só com planos gratuitos
 
-Valores aproximados em dólar, com base nos preços públicos que conheço; confira nos sites antes de
-contratar.
+Decisão: **Vercel + Supabase**, sem pagar nada além da IA. Como os planos gratuitos têm limites,
+a arquitetura se ajusta assim:
+
+| Peça | Serviço (grátis) | Limite que importa | Como contornamos |
+|---|---|---|---|
+| Site | Vercel Hobby | Uso não comercial; funções de no máximo alguns minutos | O site só recebe o upload e mostra os resultados; o processamento longo vai para o worker. **Ao começar a cobrar, migrar para o Vercel Pro (US$ 20/mês)**, exigido pelos termos |
+| Login, banco e arquivos | Supabase Free | 2 projetos grátis **por conta**; 500 MB de banco e 1 GB de arquivos; projeto pausa após 7 dias sem uso; e-mail embutido envia poucos convites por hora | Ver o aviso abaixo sobre os seus outros projetos; apagar PDFs após o processamento e guardar só os resultados; convites são poucos nos testes |
+| Worker (processos de 5–40 min) | **GitHub Actions** do repositório privado | 2.000 minutos/mês grátis em repositório privado (cerca de 50–100 obras) | O site dispara o workflow; ele baixa o PDF do Supabase, roda o `cotaai/`, devolve os resultados ao Supabase e não grava nada no repositório |
+| CEP → endereço | ViaCEP | Grátis, sem chave | — |
+| Lojas próximas | OpenStreetMap (Nominatim/Overpass) | Grátis, cobertura irregular de lojas pequenas | Complementar com a lista de lojas do RJ que já temos; Google Places só se precisar (pede cartão) |
+| Preço de referência | SINAPI (Caixa) | Grátis, planilhas mensais por estado | Importar a tabela do RJ uma vez por mês |
+| Erros | Sentry Developer | 5 mil erros/mês | — |
+| Endereço do site | `*.vercel.app` | — | Domínio próprio (cerca de R$ 40/ano) quando quiser |
+
+**Suas contas gratuitas já em uso (resposta à sua pergunta):**
+
+- **Vercel:** não muda nada. O plano Hobby aceita vários projetos; a Cota.Ai vira mais um.
+- **Supabase:** **pode mudar.** O plano gratuito permite **2 projetos ativos por conta**. Se os seus
+  outros projetos já ocupam as duas vagas, há três saídas: pausar um deles, criar uma conta nova
+  do Supabase só para a Cota.Ai (recomendado: separa os dados dos clientes dos outros projetos) ou
+  usar o Neon (Postgres grátis) para o banco. Os projetos grátis também pausam depois de 7 dias
+  sem acesso; na fase de testes, isso só atrasa o primeiro acesso depois da pausa.
+
+**Custo mensal fixo: R$ 0.** Único gasto: a API da Anthropic (seção 6).
+
+### Outras opções avaliadas (para o futuro)
+
+
+Valores aproximados em dólar; confira nos sites antes de contratar.
 
 | Opção | Como fica | Prós | Contras | Custo mensal na fase de testes |
 |---|---|---|---|---|
-| **A. Vercel + Supabase + worker Python no Railway** (recomendada) | Site Next.js na Vercel; login, banco Postgres e arquivos no Supabase; o motor `cotaai/` roda num worker no Railway | Mais rápida de construir; cada peça é especialista; Supabase traz login, banco e arquivos privados com regras por empresa | Três contas e três faturas | US$ 0–70 (Vercel Pro US$ 20 para uso comercial, Supabase Pro US$ 25, Railway US$ 5–20) |
+| **A paga. Vercel Pro + Supabase Pro + worker no Railway** (quando houver receita) | Site Next.js na Vercel; login, banco Postgres e arquivos no Supabase; o motor `cotaai/` roda num worker no Railway | Mais rápida de construir; cada peça é especialista; Supabase traz login, banco e arquivos privados com regras por empresa | Três contas e três faturas | US$ 0–70 (Vercel Pro US$ 20 para uso comercial, Supabase Pro US$ 25, Railway US$ 5–20) |
 | **B. Google Cloud** (Cloud Run + Firebase Auth + Cloud SQL ou Firestore + Cloud Storage) | Tudo no Google; site e worker em contêineres | Uma fatura; programa Google for Startups dá créditos; Google Maps/Places no mesmo lugar | Mais configuração; painel mais complexo | US$ 20–80 (ou zero com créditos) |
 | **C. AWS** (Amplify ou ECS + Cognito + RDS + S3) | Equivalente à B, na Amazon | Padrão de mercado; créditos do AWS Activate | A mais trabalhosa de montar e manter | US$ 30–100 (ou zero com créditos) |
 | **D. Tudo em Python** (FastAPI ou Django + HTMX no Render ou Fly.io + Postgres gerenciado) | Um só código, na mesma linguagem do motor atual | Menos peças; reaproveita tudo; mais barata | Interface menos rica (planilha editável e 3D pedem mais JavaScript à mão) | US$ 15–40 |
@@ -226,9 +255,10 @@ Estimativa para uma obra média (cerca de 30 pranchas e 120 materiais):
 | 3D (geometria + 1 ou 2 rodadas de ajuste) | Opus 5.5 | US$ 1–3 |
 | **Total por obra** | | **US$ 8–17 (R$ 45–95)** |
 
-Orçamento sugerido para a fase de testes (20 a 30 obras de teste por mês, incluindo as nossas
-de calibração): **US$ 250–550 por mês (R$ 1.400–3.000)**, sendo US$ 0–70 de infraestrutura e o
-restante de IA. Esses números precisam ser confirmados rodando os projetos reais que você tem: o
+Orçamento da fase de testes, com infraestrutura grátis: **só a IA, cerca de US$ 8–17 por obra**.
+Com 20 obras no mês (incluindo as de calibração), algo como US$ 160–340 (R$ 900–1.900). Para
+controlar, a plataforma terá um teto mensal de gasto e a obra grátis de cada cliente usa limites
+menores de busca de preços. Esses números precisam ser confirmados rodando os projetos reais que você tem: o
 painel de custo por obra (seção 3.4) mede isso desde o primeiro dia.
 
 Para o preço de venda: com custo de R$ 50–100 por obra, cobrar R$ 300–600 por obra ou uma
