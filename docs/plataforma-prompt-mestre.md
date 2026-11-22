@@ -1,7 +1,48 @@
-# Cota.Ai como plataforma: prompt mestre (v0) e sugestões
+# Cota.Ai como plataforma: prompt mestre e sugestões
 
-> Rascunho para alinhamento. Os pontos marcados com **[A DEFINIR]** dependem das respostas às
-> perguntas de alinhamento. Depois das respostas, este documento vira a especificação da v1.
+> Versão 1 do alinhamento (22/11/2026). As decisões estão na seção 0; o que continua
+> **[A DEFINIR]** depende da escolha de infraestrutura (seção 5).
+
+## 0. Decisões do alinhamento
+
+| Tema | Decisão |
+|---|---|
+| Cliente | Construtoras e empreiteiras pequenas e médias |
+| Obras | Todos os tipos |
+| Quem usa | Todos: dono, orçamentista e engenheiro (cotar, ver a obra, mandar o 3D ao cliente final) |
+| Cobrança | Por obra ou assinatura mensal (definir depois dos testes) |
+| Região inicial | Rio de Janeiro |
+| Concorrência hoje | Planilha manual |
+| Entrada | PDF de projeto, obrigatório. Sem projeto, não processa. Fotos do local são opcionais |
+| Legenda da planilha | Azul = explícito no projeto, laranja = inferido pela IA, cinza = premissa a confirmar |
+| Modelo da planilha | Formato próprio da Cota.Ai |
+| Serviços | Preço de referência (SINAPI), editável pelo empreiteiro |
+| Formatos de saída | Planilha online, Excel e PDF |
+| Lojas | Raio de busca escolhido pelo usuário; SINAPI como referência oficial |
+| Pedido de cotação automático (WhatsApp/e-mail) | Fica para depois da v1 |
+| Tempo de resposta | Até algumas horas é aceitável; quanto mais rápido, melhor |
+| 3D | Modelo interativo, primeiro para o cliente final ver a obra; destaque para demolição e construção; "antes" pelas plantas e pelas fotos quando houver |
+| Plataforma | Web responsiva primeiro; app depois |
+| Acesso | Só por convite; um usuário por empresa no início |
+| Link para o cliente final | Link de visualização sem login, com prazo de validade e opção de revogar (decisão minha, pode mudar) |
+| Marca | Ainda sem manual; criamos uma identidade simples na v1 |
+| Teste grátis | 1 obra por cliente |
+| Precisão | Há projetos reais com orçamento fechado para medir o erro antes dos testes |
+| Sigilo | Prevenir sempre: dados isolados por empresa, arquivos privados, LGPD |
+
+**Prioridade recomendada (perguntas 38 e 39):**
+
+1. **Entrega 1 (semanas 1–3):** login por convite, upload, levantamento em 3 etapas, planilha online
+   e Excel com a legenda nova. É o que mostra valor sozinho e permite medir a precisão.
+2. **Entrega 2 (semanas 3–5):** preços com SINAPI e lojas pelo CEP da obra.
+3. **Entrega 3 (semanas 5–7):** 3D antes/depois com link para o cliente final.
+4. **Depois:** proposta comercial (já existe no motor e entra fácil), pedido de cotação
+   automático, app.
+
+**BDI (pergunta 16):** é o percentual que a construtora soma ao custo direto (materiais + mão de
+obra) para cobrir despesas indiretas (administração, seguros, garantia, riscos), impostos e lucro.
+Em obras privadas costuma ficar entre 20% e 35%. A proposta: a planilha mostra o custo direto e
+tem um campo opcional de BDI, que gera o preço de venda.
 
 ## 1. Onde estamos hoje
 
@@ -42,8 +83,8 @@ trocar o que hoje depende do Claude Code por chamadas de API.**
   fora da requisição web (Vercel Workflow, ou um worker em Railway/Fly/Cloud Run). **[A DEFINIR]**
 - **Preços sem Claude Code:** a etapa 4 passa a usar a API com as ferramentas de busca e leitura
   de páginas do servidor da Anthropic, mais fontes estruturadas (SINAPI, lojas com API).
-- **Compartilhamento:** cada obra gera um link (privado, com senha ou por e-mail) para o cliente
-  final ver a planilha e o 3D sem criar conta. **[A DEFINIR]**
+- **Compartilhamento:** cada obra gera um link de visualização sem login, com validade e opção de
+  revogar, para o cliente final ver o 3D (e, se o construtor quiser, a planilha sem preços).
 
 ## 3. Sugestões e alterações
 
@@ -86,8 +127,13 @@ trocar o que hoje depende do Claude Code por chamadas de API.**
 3. **Painel de custo por obra** (tokens + buscas) para definir o preço do plano.
 4. **LGPD e sigilo**: projetos de clientes em armazenamento privado, por empresa, com exclusão sob
    pedido; nunca em repositório público.
+5. **Atenção, repositório público:** em 22/11/2026 o repositório `gtvmoura/Cota.Ai` está
+   **público**. O workflow `.github/workflows/cotacao.yml` grava projetos e planilhas em
+   `projetos/` e `cotacoes/` dentro do repositório, ou seja, ficariam visíveis para qualquer
+   pessoa. Antes de usar com qualquer projeto real: tornar o repositório privado (ou migrar para
+   o privado `gtvmoura/cota-a-`) e, na plataforma, guardar arquivos só no armazenamento privado.
 
-## 4. Prompt mestre (v0) para construir a plataforma
+## 4. Prompt mestre para construir a plataforma
 
 Use este prompt numa sessão de desenvolvimento (Claude Code) depois das respostas às perguntas.
 
@@ -101,9 +147,10 @@ pesquisa de preços (.claude/skills/cotacao) e modelo 3D (.claude/skills/projeto
 OBJETIVO DA v1: transformar esse motor numa plataforma web que clientes externos testem sozinhos.
 
 FLUXO DO USUÁRIO
-1. Cria conta (empresa + usuários) [A DEFINIR: convite fechado ou cadastro livre].
-2. "Nova obra": nome, tipo [reforma/obra nova/...], endereço ou CEP da obra, upload dos arquivos
-   (PDF, imagens, memorial; fotos do local opcionais).
+1. Entra por convite (uma empresa, um usuário no início; 1 obra grátis de teste).
+2. "Nova obra": nome, tipo (qualquer tipo de obra), endereço ou CEP da obra (região inicial: RJ),
+   raio de busca de lojas, upload do projeto em PDF (obrigatório; sem projeto não processa),
+   memorial e fotos do local (opcionais).
 3. Acompanha o progresso em tempo real por etapa: leitura → levantamento → validação → revisão →
    [checkpoint humano] → preços → 3D → planilha final.
 4. Recebe:
@@ -115,7 +162,9 @@ FLUXO DO USUÁRIO
       itens sem preço ficam marcados "não encontrado".
    c) Visualizador 3D antes/obra/depois com as principais mudanças numeradas e destacadas,
       comparador lado a lado e imagens de apresentação.
-5. Compartilha um link de visualização com o cliente final [A DEFINIR: permissões].
+5. Compartilha com o cliente final um link de visualização sem login, com validade e revogável.
+6. Serviços vêm com preço de referência SINAPI que o empreiteiro pode alterar; campo opcional de
+   BDI gera o preço de venda. Saídas: planilha online, Excel e PDF.
 
 REQUISITOS TÉCNICOS
 - Front: Next.js (App Router) + TypeScript + Tailwind + shadcn/ui, em português do Brasil,
@@ -144,7 +193,48 @@ Antes de codar cada entrega, apresente o plano, as tabelas do banco e as telas; 
 com testes e um roteiro de verificação manual.
 ```
 
-## 5. Riscos a ter no radar
+## 5. Opções de infraestrutura (pergunta 33)
+
+Valores aproximados em dólar, com base nos preços públicos que conheço; confira nos sites antes de
+contratar.
+
+| Opção | Como fica | Prós | Contras | Custo mensal na fase de testes |
+|---|---|---|---|---|
+| **A. Vercel + Supabase + worker Python no Railway** (recomendada) | Site Next.js na Vercel; login, banco Postgres e arquivos no Supabase; o motor `cotaai/` roda num worker no Railway | Mais rápida de construir; cada peça é especialista; Supabase traz login, banco e arquivos privados com regras por empresa | Três contas e três faturas | US$ 0–70 (Vercel Pro US$ 20 para uso comercial, Supabase Pro US$ 25, Railway US$ 5–20) |
+| **B. Google Cloud** (Cloud Run + Firebase Auth + Cloud SQL ou Firestore + Cloud Storage) | Tudo no Google; site e worker em contêineres | Uma fatura; programa Google for Startups dá créditos; Google Maps/Places no mesmo lugar | Mais configuração; painel mais complexo | US$ 20–80 (ou zero com créditos) |
+| **C. AWS** (Amplify ou ECS + Cognito + RDS + S3) | Equivalente à B, na Amazon | Padrão de mercado; créditos do AWS Activate | A mais trabalhosa de montar e manter | US$ 30–100 (ou zero com créditos) |
+| **D. Tudo em Python** (FastAPI ou Django + HTMX no Render ou Fly.io + Postgres gerenciado) | Um só código, na mesma linguagem do motor atual | Menos peças; reaproveita tudo; mais barata | Interface menos rica (planilha editável e 3D pedem mais JavaScript à mão) | US$ 15–40 |
+| **E. Low-code no front** (Bubble ou FlutterFlow) + worker Python | Telas montadas sem código; o motor continua em Python | Você mesmo ajusta as telas | Limitada para o 3D e a planilha; fica presa à ferramenta; caro ao crescer | US$ 30–120 |
+| **Complemento: Managed Agents (Anthropic)** | Os agentes (preços, 3D) rodam num ambiente da própria Anthropic, em vez de no nosso worker | Menos servidor para manter; bom para os agentes de busca longa | Em beta; cobra tempo de sessão além dos tokens | Por uso |
+
+Itens comuns a todas: domínio `.com.br` (cerca de R$ 40/ano), e-mail transacional (Resend ou
+similar, gratuito até alguns milhares de e-mails), Google Places para lojas próximas (há cota
+gratuita mensal que cobre os testes) e monitoramento de erros (Sentry, plano gratuito).
+
+## 6. Custo estimado por obra e orçamento dos testes (pergunta 34)
+
+Preços da API da Anthropic por milhão de tokens: Claude Opus 5.5 US$ 4 de entrada e US$ 20 de
+saída (leitura em cache US$ 0,20); Claude Sonnet 5.5 US$ 2 e US$ 10. Cada busca na web tem custo
+próprio além dos tokens (confira o valor atual na página de preços).
+
+Estimativa para uma obra média (cerca de 30 pranchas e 120 materiais):
+
+| Etapa | Modelo sugerido | Custo estimado |
+|---|---|---|
+| Levantamento (3 etapas, projeto em cache) | Opus 5.5 | US$ 2–4 (projeto grande, 100+ pranchas: US$ 8–12) |
+| Pesquisa de preços (~300 buscas e leitura das páginas) | Sonnet 5.5 | US$ 5–10 (cai muito com o cache de preços por região) |
+| 3D (geometria + 1 ou 2 rodadas de ajuste) | Opus 5.5 | US$ 1–3 |
+| **Total por obra** | | **US$ 8–17 (R$ 45–95)** |
+
+Orçamento sugerido para a fase de testes (20 a 30 obras de teste por mês, incluindo as nossas
+de calibração): **US$ 250–550 por mês (R$ 1.400–3.000)**, sendo US$ 0–70 de infraestrutura e o
+restante de IA. Esses números precisam ser confirmados rodando os projetos reais que você tem: o
+painel de custo por obra (seção 3.4) mede isso desde o primeiro dia.
+
+Para o preço de venda: com custo de R$ 50–100 por obra, cobrar R$ 300–600 por obra ou uma
+assinatura com franquia de obras deixa margem confortável.
+
+## 7. Riscos a ter no radar
 
 - **Precisão do quantitativo** é o que decide a confiança do cliente; precisamos de 3 a 5 projetos
   reais com orçamento já fechado para medir o erro antes de abrir para testes.
